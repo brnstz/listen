@@ -35,6 +35,7 @@ func getShows(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*
 func main() {
 	// Test API stuff
 	http.HandleFunc("/api/shows.json", getShows)
@@ -47,4 +48,4 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-}
+}*/
