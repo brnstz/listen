@@ -1,117 +1,230 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"log"
+	"os"
+	"time"
 
+	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/s3"
+
+	"github.com/brnstz/ohmy"
 	"github.com/streadway/amqp"
 )
 
 const (
-	qDial = "amqp://guest:guest@192.168.59.103:5672"
+	exchangeName = "listen"
+	bucket       = "brnstz"
+	path         = "/listen/shows"
 )
 
-func setup() *amqp.Channel {
-	conn, err := amqp.Dial(qDial)
-	if err != nil {
-		panic(err)
-	}
+// Declare our exchange
+func ensureExchange(ch *amqp.Channel) error {
+	return ch.ExchangeDeclare(
+		// Fanout queue called listen
+		exchangeName, "fanout",
 
-	ch, err := conn.Channel()
-	if err != nil {
-		panic(err)
-	}
+		// yes durable
+		true,
 
-	err = ch.ExchangeDeclare(
-		"logs",   // name
-		"fanout", // type
-		true,     // durable
-		false,    // auto-deleted
-		false,    // internal
-		false,    // no-wait
-		nil,      // arguments
+		// no auto-delete, no internal, no noWait
+		false, false, false,
+
+		// no extra arguments
+		nil,
 	)
-	if err != nil {
-		panic(err)
-	}
-
-	return ch
 }
 
-func send() {
-	ch := setup()
+// Bind to an exchange and get a Go channel of messages
+func receiveFromQueue(ch *amqp.Channel, name string) (msgs <-chan amqp.Delivery, err error) {
 
-	msg := amqp.Publishing{
-		ContentType: "text/plain",
-		Body:        []byte("hello"),
-	}
-
-	err := ch.Publish(
-		"logs", // exchange
-		"",     // routing key
-		false,  // mandatory
-		false,  // immediate
-		msg,    //
-	)
-
-	if err != nil {
-		panic(err)
-	}
-
-	log.Println("sent it")
-}
-
-func receive() {
-	ch := setup()
-
+	// Create the queue
 	q, err := ch.QueueDeclare(
-		"",    // name
-		false, // durable
-		false, // delete when used
-		true,  // exclusive
-		false, // no-wait
-		nil,   // arguments
+		name,
+
+		// false to durable, delete when used
+		false, false,
+
+		// true to exclusive
+		true,
+
+		// no no wait and nil arguments
+		false, nil,
 	)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 
+	// Bind queue to our exchange
 	err = ch.QueueBind(
-		q.Name, // queue name
-		"",     // routing key
-		"logs", // exchange
+		q.Name,
+
+		// blank routing key
+		"",
+
+		exchangeName,
+
+		// FIXME: what are these?
 		false,
 		nil,
 	)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 
-	msgs, err := ch.Consume(
-		q.Name, //queue name
-		"",     // consumer
-		true,   // auto-ack FIXME
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
+	// Start receiving messages
+	msgs, err = ch.Consume(
+		q.Name,
+
+		// consumer
+		"",
+
+		// auto-ack
+		true,
+
+		//  false to exclusive, no local, no wait
+		false, false, false,
+
+		nil, // args
 	)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 
-	go func() {
-		for d := range msgs {
-			log.Printf("Received %s\n", d.Body)
-			log.Printf("%+v\n", d)
-		}
-	}()
+	return
+}
+
+func publishAsGob(value interface{}, ch *amqp.Channel) (err error) {
+
+	// Setup stuff for gob
+	var buff bytes.Buffer
+	enc := gob.NewEncoder(&buff)
+
+	// Encode into a gob
+	err = enc.Encode(value)
+	if err != nil {
+		log.Println("Error encoding value %#v %v", value, err)
+		return
+	}
+
+	// Create a message with the gob
+	msg := amqp.Publishing{
+		ContentType: "application/octet-stream",
+		Body:        buff.Bytes(),
+	}
+
+	// Publish our gob
+	err = ch.Publish(
+		// Send to our exchange
+		exchangeName,
+
+		// routing key, not mandatory, not immediate
+		"", false, false,
+
+		msg,
+	)
+	if err != nil {
+		log.Printf("Error publishing message: %+v %v\n", msg, err)
+		return
+	}
+
+	// Success!
+	return
+}
+
+func oneReader() {
+	// Get connection to rabbit
+	// FIXME: does it make sense to reconnect here?
+	url := os.Getenv("AMQP_URL")
+	conn, err := amqp.Dial(url)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer conn.Close()
+
+	// Get a channel
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer ch.Close()
+
+	err = ensureExchange(ch)
+	if err != nil {
+		return
+	}
+
+	// Get current shows
+	shows, err := ohmy.GetShows(ohmy.RegionNYC, 100)
+	if err != nil {
+		// Skip when there's an err, will be logged by the ohmy lib
+		return
+	}
+
+	// Look at each show
+	for _, show := range shows {
+		log.Printf("%+v\n", show)
+		publishAsGob(show, ch)
+	}
+}
+
+// Periodically pull updates from ohmy and publish it to our exchange
+func reader() {
+	for {
+		oneReader()
+		time.Sleep(time.Minute * 5)
+	}
+}
+
+func s3Writer() {
+	// Get connection to rabbit
+	// FIXME: does it make sense to reconnect here?
+	url := os.Getenv("AMQP_URL")
+	conn, err := amqp.Dial(url)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer conn.Close()
+
+	// Get a channel
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer ch.Close()
+
+	err = ensureExchange(ch)
+	if err != nil {
+		return
+	}
+
+	s3auth := aws.Auth{
+		AccessKey: os.Getenv("AWS_ACCESS_KEY_ID"),
+		SecretKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+	}
+	s3conn := s3.New(s3auth, aws.Regions[os.Getenv("AWS_DEFAULT_REGION")])
+	s3Bucket := s3conn.Bucket(bucket)
+	log.Println(s3Bucket)
+
+	msgs, err := receiveFromQueue(ch, "s3")
+	for d := range msgs {
+		log.Printf("Received %s\n", d.Body)
+		log.Printf("%+v\n", d)
+	}
 
 }
 
 func main() {
-	receive()
-	send()
-	log.Println("after send")
+	go s3Writer()
+	go reader()
 
 	forever := make(chan bool)
 	<-forever
