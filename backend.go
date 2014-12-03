@@ -3,8 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
+	"path"
 	"time"
 
 	"launchpad.net/goamz/aws"
@@ -15,9 +18,11 @@ import (
 )
 
 const (
-	exchangeName = "listen"
-	bucket       = "brnstz"
-	path         = "/listen/shows"
+	exchangeName       = "listen"
+	bucketName         = "brnstz"
+	rootPath           = "/listen"
+	showPath           = "/shows"
+	showPathTimeFormat = "2006-01-02_15"
 )
 
 // Try to connect, returning either both channel and connection, or an error.
@@ -165,6 +170,15 @@ func publishAsGob(value interface{}, ch *amqp.Channel) (err error) {
 	return
 }
 
+// Given data in src, decode it as a gob into dst
+func decode(src []byte, dst interface{}) (err error) {
+	buf := bytes.NewBuffer(src)
+	dec := gob.NewDecoder(buf)
+	err = dec.Decode(dst)
+
+	return
+}
+
 func oneReader() {
 	ch, conn, err := connect()
 	if err != nil {
@@ -182,7 +196,6 @@ func oneReader() {
 
 	// Look at each show
 	for _, show := range shows {
-		log.Printf("%+v\n", show)
 		publishAsGob(show, ch)
 	}
 }
@@ -194,6 +207,12 @@ func reader() {
 		time.Sleep(time.Minute * 5)
 	}
 }
+
+/*
+func showPath(s *ohmy.Show) {
+	fullPath := path.Join(rootPath, showPath)
+}
+*/
 
 func s3Writer() {
 	ch, conn, err := connect()
@@ -208,13 +227,38 @@ func s3Writer() {
 		SecretKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
 	}
 	s3conn := s3.New(s3auth, aws.Regions[os.Getenv("AWS_DEFAULT_REGION")])
-	s3Bucket := s3conn.Bucket(bucket)
-	log.Println(s3Bucket)
+	bucket := s3conn.Bucket(bucketName)
+	log.Println(bucket)
 
 	msgs, err := receiveFromQueue(ch, "s3")
 	for d := range msgs {
-		log.Printf("Received %s\n", d.Body)
-		log.Printf("%+v\n", d)
+
+		// Decode the rabbit message into a Show object
+		var show ohmy.Show
+		err = decode(d.Body, &show)
+		if err != nil {
+			continue
+		}
+
+		// Create the path to store this show under
+		fullPath := path.Join(
+			rootPath, showPath,
+			show.Starts.Format(showPathTimeFormat),
+			fmt.Sprint(show.Venue.Slug, ".json"),
+		)
+
+		b, err := json.Marshal(show)
+		if err != nil {
+			log.Println("Cannot encode show", err)
+			continue
+		}
+
+		err = bucket.Put(fullPath, b, "application/json", s3.Private)
+		if err != nil {
+			log.Println("Cannot store show", err)
+			continue
+		}
+
 	}
 
 }
