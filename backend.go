@@ -228,7 +228,6 @@ func s3Writer() {
 	}
 	s3conn := s3.New(s3auth, aws.Regions[os.Getenv("AWS_DEFAULT_REGION")])
 	bucket := s3conn.Bucket(bucketName)
-	log.Println(bucket)
 
 	msgs, err := receiveFromQueue(ch, "s3")
 	for d := range msgs {
