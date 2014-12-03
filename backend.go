@@ -20,6 +20,36 @@ const (
 	path         = "/listen/shows"
 )
 
+// Try to connect, returning either both channel and connection, or an error.
+// Also ensure the exchange exists while we're at it. Caller is responsible
+// for closing the connection and channel.
+func connect() (ch *amqp.Channel, conn *amqp.Connection, err error) {
+
+	// Get connection to rabbit
+	url := os.Getenv("AMQP_URL")
+	conn, err = amqp.Dial(url)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	// Get a channel
+	ch, err = conn.Channel()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	// Make sure the exchange exists
+	err = ensureExchange(ch)
+	if err != nil {
+		return
+	}
+
+	// Success
+	return
+}
+
 // Declare our exchange
 func ensureExchange(ch *amqp.Channel) error {
 	return ch.ExchangeDeclare(
@@ -67,9 +97,8 @@ func receiveFromQueue(ch *amqp.Channel, name string) (msgs <-chan amqp.Delivery,
 
 		exchangeName,
 
-		// FIXME: what are these?
-		false,
-		nil,
+		// no no wait and nil extra args
+		false, nil,
 	)
 	if err != nil {
 		log.Println(err)
@@ -132,33 +161,17 @@ func publishAsGob(value interface{}, ch *amqp.Channel) (err error) {
 		return
 	}
 
-	// Success!
+	// Success
 	return
 }
 
 func oneReader() {
-	// Get connection to rabbit
-	// FIXME: does it make sense to reconnect here?
-	url := os.Getenv("AMQP_URL")
-	conn, err := amqp.Dial(url)
+	ch, conn, err := connect()
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatal("Cannot connect", err)
 	}
 	defer conn.Close()
-
-	// Get a channel
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Println(err)
-		return
-	}
 	defer ch.Close()
-
-	err = ensureExchange(ch)
-	if err != nil {
-		return
-	}
 
 	// Get current shows
 	shows, err := ohmy.GetShows(ohmy.RegionNYC, 100)
@@ -183,28 +196,12 @@ func reader() {
 }
 
 func s3Writer() {
-	// Get connection to rabbit
-	// FIXME: does it make sense to reconnect here?
-	url := os.Getenv("AMQP_URL")
-	conn, err := amqp.Dial(url)
+	ch, conn, err := connect()
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatal("Cannot connect", err)
 	}
 	defer conn.Close()
-
-	// Get a channel
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Println(err)
-		return
-	}
 	defer ch.Close()
-
-	err = ensureExchange(ch)
-	if err != nil {
-		return
-	}
 
 	s3auth := aws.Auth{
 		AccessKey: os.Getenv("AWS_ACCESS_KEY_ID"),
