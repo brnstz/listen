@@ -89,6 +89,38 @@ type band struct {
 	LastUpdated *time.Time `json:"last_updated"`
 }
 
+func (b *band) QueueName() string {
+	return "band"
+}
+
+func (b *band) RouteName() string {
+	return routeBand
+}
+
+func (b *band) Process(by []byte) (err error) {
+	var incoming ohmy.Band
+
+	err = decode(by, &incoming)
+	if err != nil {
+		return
+	}
+
+	b.Name = incoming.Name
+	b.Slug = incoming.Slug
+
+	// FIXME: get tracks from spotify, etc.
+	//b.Tracks =
+	//b.LastUpdated
+
+	return
+}
+
+func (b *band) Path() string {
+	return path.Join(
+		rootPath, "/band", fmt.Sprintf("%s.json", b.Slug),
+	)
+}
+
 // The venue where the show is happening
 type venue struct {
 	Address     string     `json:"address"`
