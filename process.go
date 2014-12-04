@@ -47,6 +47,8 @@ func recvAndWrite(e entity) {
 		if err != nil {
 			log.Println("Cannot store entity", err)
 			continue
+		} else {
+			log.Println("Successfully wrote to:", e.Path())
 		}
 	}
 }

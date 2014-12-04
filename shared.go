@@ -26,7 +26,7 @@ const (
 
 	listingPath = "listings.json"
 
-	numShows = 100
+	numShows = 10
 
 	datePath = "/2006/01/02"
 )
@@ -107,12 +107,13 @@ func (b *band) Process(by []byte) (err error) {
 		return
 	}
 
+	now := time.Now()
+
 	b.Name = incoming.Name
 	b.Slug = incoming.Slug
 
-	// FIXME: get tracks from spotify, etc.
-	//b.Tracks =
-	//b.LastUpdated
+	b.Tracks = searchSpotify(b.Name)
+	b.LastUpdated = &now
 
 	return
 }
