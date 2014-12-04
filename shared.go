@@ -8,15 +8,15 @@ import (
 
 	"github.com/brnstz/ohmy"
 
-	"log"
-
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/s3"
 )
 
 const (
-	exchangeName = "listen"
-	bucketName   = "brnstz"
+	// Use default exchange for worker tasks
+	workerExchange = ""
+
+	numWorkers = 3
 
 	routeShow  = "show"
 	routeVenue = "venue"
@@ -76,7 +76,6 @@ func (s *show) Process(b []byte) (err error) {
 }
 
 func (s *show) Path() string {
-	log.Print("in show path")
 	return path.Join(
 		rootPath, "/show", s.Starts.Format(datePath),
 		fmt.Sprint(s.Starts.Unix()),
@@ -119,7 +118,6 @@ func (b *band) Process(by []byte) (err error) {
 }
 
 func (b *band) Path() string {
-	log.Print("in band path")
 	return path.Join(
 		rootPath, "/band", fmt.Sprintf("%s.json", b.Slug),
 	)
@@ -164,7 +162,6 @@ func (v *venue) Process(b []byte) (err error) {
 }
 
 func (v *venue) Path() string {
-	log.Print("in venue path")
 	return path.Join(
 		rootPath, "/venue", fmt.Sprintf("%s.json", v.Slug),
 	)
@@ -185,5 +182,5 @@ func getBucket() *s3.Bucket {
 	}
 	s3conn := s3.New(s3auth, aws.Regions[os.Getenv("AWS_DEFAULT_REGION")])
 
-	return s3conn.Bucket(bucketName)
+	return s3conn.Bucket(os.Getenv("AWS_S3_BUCKET"))
 }

@@ -39,8 +39,9 @@ func recvAndWrite(e entity) {
 			continue
 		}
 
-		log.Println(e)
-		log.Println(e.Path())
+		if debug {
+			log.Printf("Received from queue: %s %v %v\n", b, e.QueueName(), e.RouteName())
+		}
 
 		err = bucket.Put(e.Path(), b, "application/json", s3.Private)
 		if err != nil {

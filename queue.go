@@ -29,31 +29,8 @@ func connect() (ch *amqp.Channel, conn *amqp.Connection, err error) {
 		return
 	}
 
-	// Make sure the exchange exists
-	err = ensureExchange(ch)
-	if err != nil {
-		return
-	}
-
 	// Success
 	return
-}
-
-// Declare our exchange
-func ensureExchange(ch *amqp.Channel) error {
-	return ch.ExchangeDeclare(
-		// Fanout queue called listen
-		exchangeName, "fanout",
-
-		// yes durable
-		true,
-
-		// no auto-delete, no internal, no noWait
-		false, false, false,
-
-		// no extra arguments
-		nil,
-	)
 }
 
 // Bind to an exchange and get a Go channel of messages
@@ -66,24 +43,10 @@ func receiveFromQueue(ch *amqp.Channel, name, route string) (msgs <-chan amqp.De
 		// false to durable, delete when used
 		false, false,
 
-		// true to exclusive
-		true,
+		// false to exclusive
+		false,
 
 		// no no wait and nil arguments
-		false, nil,
-	)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	// Bind queue to our exchange
-	err = ch.QueueBind(
-		q.Name,
-		route,
-		exchangeName,
-
-		// no no wait and nil extra args
 		false, nil,
 	)
 	if err != nil {
@@ -101,10 +64,8 @@ func receiveFromQueue(ch *amqp.Channel, name, route string) (msgs <-chan amqp.De
 		// auto-ack
 		true,
 
-		//  false to exclusive, no local, no wait
-		false, false, false,
-
-		nil, // args
+		//  false to exclusive, no local, no wait, and nil args
+		false, false, false, nil,
 	)
 	if err != nil {
 		log.Println(err)
@@ -132,11 +93,14 @@ func publishAsGob(value interface{}, ch *amqp.Channel, route string) (err error)
 		Body:        buff.Bytes(),
 	}
 
-	log.Printf("Publishing %+v to %v %v\n", value, exchangeName, route)
+	if debug {
+		log.Printf("Publishing %+v to %v %v\n", value, workerExchange, route)
+	}
+
 	// Publish our gob
 	err = ch.Publish(
 		// Send to our exchange
-		exchangeName,
+		workerExchange,
 		route,
 
 		// not mandatory, not immediate
