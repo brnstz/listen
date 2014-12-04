@@ -11,7 +11,6 @@ import (
 const (
 	// FIXME
 	staticDir = "/Users/bseitz/go/src/github.com/brnstz/sandbox/listen/html"
-	numShows  = 100
 )
 
 func getShows(w http.ResponseWriter, r *http.Request) {
