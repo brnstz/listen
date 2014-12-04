@@ -16,7 +16,7 @@ const (
 	// Use default exchange for worker tasks
 	workerExchange = ""
 
-	numWorkers = 3
+	numWorkers = 5
 
 	routeShow  = "show"
 	routeVenue = "venue"
@@ -26,7 +26,7 @@ const (
 
 	listingPath = "listings.json"
 
-	numShows = 10
+	numShows = 100
 
 	datePath = "/2006/01/02"
 )
@@ -76,11 +76,7 @@ func (s *show) Process(b []byte) (err error) {
 }
 
 func (s *show) Path() string {
-	return path.Join(
-		rootPath, "/show", s.Starts.Format(datePath),
-		fmt.Sprint(s.Starts.Unix()),
-		fmt.Sprintf("%d-%s.json", s.Starts.Unix(), s.Venue),
-	)
+	return showPath(s.Starts, s.Venue)
 }
 
 // The band that is playing with track listings
@@ -119,9 +115,7 @@ func (b *band) Process(by []byte) (err error) {
 }
 
 func (b *band) Path() string {
-	return path.Join(
-		rootPath, "/band", fmt.Sprintf("%s.json", b.Slug),
-	)
+	return entityPath("/band", b.Slug)
 }
 
 // The venue where the show is happening
@@ -163,9 +157,7 @@ func (v *venue) Process(b []byte) (err error) {
 }
 
 func (v *venue) Path() string {
-	return path.Join(
-		rootPath, "/venue", fmt.Sprintf("%s.json", v.Slug),
-	)
+	return entityPath("/venue", v.Slug)
 }
 
 type track struct {
@@ -184,4 +176,17 @@ func getBucket() *s3.Bucket {
 	s3conn := s3.New(s3auth, aws.Regions[os.Getenv("AWS_DEFAULT_REGION")])
 
 	return s3conn.Bucket(os.Getenv("AWS_S3_BUCKET"))
+}
+
+func showPath(t *time.Time, slug string) string {
+	return path.Join(
+		rootPath, "/show", t.Format(datePath),
+		fmt.Sprintf("%d-%s.json", t.Unix(), slug),
+	)
+}
+
+func entityPath(prefix, slug string) string {
+	return path.Join(
+		rootPath, prefix, fmt.Sprintf("%s.json", slug),
+	)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"path"
 	"time"
@@ -39,10 +40,11 @@ func showToListing(s show, bucket *s3.Bucket) (l listing, err error) {
 
 	// Get the venue object via slug
 	var v venue
-	err = bucketJSON(entityPath("/show", s.Venue), &v)
+	err = bucketJSON(entityPath("/venue", s.Venue), &v)
 	if err != nil {
 		return
 	}
+	log.Printf("venue: %+v %v", v, showPath(s.Starts, s.Venue))
 
 	// Copy over the full venue object
 	l.Venue = v
@@ -57,6 +59,8 @@ func showToListing(s show, bucket *s3.Bucket) (l listing, err error) {
 
 		l.Bands = append(l.Bands, b)
 	}
+
+	return
 }
 
 // Periodically aggregage current shows list for front page
@@ -78,15 +82,20 @@ func agg() {
 				showDir := path.Join(
 					rootPath, "/show", now.Format(datePath),
 				)
+				// Format for bucket.List, no preceeding slash, but yes to
+				// ending slash
+				showDir = fmt.Sprint(showDir[1:], "/")
 
 				// List the bucket dir for this day
-				resp, err := bucket.List(showDir[1:], "/", "", 1000)
+				resp, err := bucket.List(showDir, "/", "", 1000)
+				log.Printf("%+v\n", resp)
+
 				if err != nil {
 					log.Println("Can't list dir", err)
 					break
 				}
 
-				// For each show
+				// For each show, try to add or skip it
 				for _, key := range resp.Contents {
 
 					var s show
@@ -104,7 +113,7 @@ func agg() {
 				}
 
 				// Set up next iteration
-				now.AddDate(0, 0, 1)
+				now = now.AddDate(0, 0, 1)
 				days++
 			}
 
@@ -114,15 +123,16 @@ func agg() {
 				return
 			}
 
+			lpath := path.Join(rootPath, listingPath)
 			err = bucket.Put(path.Join(rootPath, listingPath), b, "application/json", s3.Private)
 			if err != nil {
 				log.Println("Cannot store aggregate file", err)
-				continue
+				return
 			} else {
-				log.Println("Successfully wrote aggregate to", e.Path())
+				log.Println("Successfully wrote aggregate to", lpath, len(b))
 			}
 		}()
 
-		time.Sleep(time.Minute * 5)
+		time.Sleep(time.Minute * 60)
 	}
 }

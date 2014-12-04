@@ -25,6 +25,7 @@ func main() {
 	}
 
 	go pullFromOMR()
+	go agg()
 
 	forever := make(chan bool)
 	<-forever
