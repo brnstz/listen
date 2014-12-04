@@ -8,6 +8,8 @@ import (
 
 	"github.com/brnstz/ohmy"
 
+	"log"
+
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/s3"
 )
@@ -74,6 +76,7 @@ func (s *show) Process(b []byte) (err error) {
 }
 
 func (s *show) Path() string {
+	log.Print("in show path")
 	return path.Join(
 		rootPath, "/show", s.Starts.Format(datePath),
 		fmt.Sprint(s.Starts.Unix()),
@@ -116,6 +119,7 @@ func (b *band) Process(by []byte) (err error) {
 }
 
 func (b *band) Path() string {
+	log.Print("in band path")
 	return path.Join(
 		rootPath, "/band", fmt.Sprintf("%s.json", b.Slug),
 	)
@@ -160,6 +164,7 @@ func (v *venue) Process(b []byte) (err error) {
 }
 
 func (v *venue) Path() string {
+	log.Print("in venue path")
 	return path.Join(
 		rootPath, "/venue", fmt.Sprintf("%s.json", v.Slug),
 	)
