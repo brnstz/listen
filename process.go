@@ -40,6 +40,7 @@ func recvAndWrite(e entity) {
 		}
 
 		log.Println(e)
+		log.Println(e.Path())
 
 		err = bucket.Put(e.Path(), b, "application/json", s3.Private)
 		if err != nil {

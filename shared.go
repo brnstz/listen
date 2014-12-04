@@ -131,6 +131,40 @@ type venue struct {
 	LastUpdated *time.Time `json:"last_updated"`
 }
 
+func (v *venue) QueueName() string {
+	return "venue"
+}
+
+func (v *venue) RouteName() string {
+	return routeVenue
+}
+
+func (v *venue) Process(b []byte) (err error) {
+	var incoming ohmy.Venue
+
+	err = decode(b, &incoming)
+	if err != nil {
+		return
+	}
+
+	now := time.Now()
+
+	v.Address = incoming.Address
+	v.Latitude = incoming.Latitude
+	v.Longitude = incoming.Longitude
+	v.Name = incoming.Name
+	v.Slug = incoming.Slug
+	v.LastUpdated = &now
+
+	return
+}
+
+func (v *venue) Path() string {
+	return path.Join(
+		rootPath, "/venue", fmt.Sprintf("%s.json", v.Slug),
+	)
+}
+
 type track struct {
 	// Source of the track to hint the display (e.g., spotify)
 	Source string `json:"source"`
