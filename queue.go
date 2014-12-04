@@ -132,13 +132,14 @@ func publishAsGob(value interface{}, ch *amqp.Channel, route string) (err error)
 		Body:        buff.Bytes(),
 	}
 
+	log.Printf("Publishing %+v to %v %v\n", value, exchangeName, route)
 	// Publish our gob
 	err = ch.Publish(
 		// Send to our exchange
 		exchangeName,
 		route,
 
-		// routing key, not mandatory, not immediate
+		// not mandatory, not immediate
 		false, false,
 
 		msg,
