@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 )
 
@@ -27,18 +28,24 @@ func main() {
 	go pullFromOMR()
 	go agg()
 
-	//http.HandleFunc("/api/shows.json", getShows)
+	http.HandleFunc("/api/shows.json", func(w http.ResponseWriter, r *http.Request) {
+
+		_, err := w.Write(cachedListings)
+		if err != nil {
+			log.Println("Error serving listings", err)
+		}
+	})
 
 	// By default look for a static asset
-	//http.Handle("/", http.FileServer(http.Dir(staticDir)))
+	http.Handle("/", http.FileServer(http.Dir(os.Getenv("LISTEN_STATIC_DIR"))))
+
+	err := http.ListenAndServe(":8003", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	/*
-		err := http.ListenAndServe(":8003", nil)
-		if err != nil {
-			log.Fatal(err)
-		}
+		forever := make(chan bool)
+		<-forever
 	*/
-
-	forever := make(chan bool)
-	<-forever
 }

@@ -10,7 +10,11 @@ import (
 	"launchpad.net/goamz/s3"
 )
 
+// How many days to look for shows
 const maxListingDays = 14
+
+// Saved listings in memory
+var cachedListings []byte
 
 // Given a bucket path, get JSON and unmarhal into object
 func bucketJSON(path string, v interface{}) (err error) {
@@ -65,7 +69,19 @@ func showToListing(s show, bucket *s3.Bucket) (l listing, err error) {
 
 // Periodically aggregage current shows list for front page
 func agg() {
+
+	first := true
 	for {
+
+		// On first iteration, try to load cached listings from bucket
+		if first {
+			bucket := getBucket()
+			b, err := bucket.Get(path.Join(rootPath, listingPath))
+			if err == nil {
+				cachedListings = b
+			}
+			first = false
+		}
 
 		func() {
 			now := time.Now()
@@ -130,6 +146,7 @@ func agg() {
 				return
 			} else {
 				log.Println("Successfully wrote aggregate to", lpath, len(b))
+				cachedListings = b
 			}
 		}()
 

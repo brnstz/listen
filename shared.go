@@ -121,8 +121,8 @@ func (b *band) Path() string {
 // The venue where the show is happening
 type venue struct {
 	Address     string     `json:"address"`
-	Latitude    string     `json:"string"`
-	Longitude   string     `json:"string"`
+	Latitude    string     `json:"latitude"`
+	Longitude   string     `json:"longitude"`
 	Name        string     `json:"name"`
 	Slug        string     `json:"slug"`
 	LastUpdated *time.Time `json:"last_updated"`
