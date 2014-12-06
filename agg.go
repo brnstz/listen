@@ -13,7 +13,7 @@ import (
 // How many days to look for shows
 const maxListingDays = 14
 
-const listingDateFormat = "Mon Jan 02 2006 03PM"
+const listingDateFormat = "Mon Jan _2 2006 3:04PM"
 
 // Saved listings in memory
 var cachedListings []byte
