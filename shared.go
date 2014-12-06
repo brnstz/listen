@@ -26,7 +26,7 @@ const (
 
 	listingPath = "listings.json"
 
-	numShows = 100
+	numShows = 200
 
 	datePath = "/2006/01/02"
 )

@@ -2,7 +2,7 @@ $(document).ready(function() {
     $.getJSON("api/shows.json", function(data) {
         var shows = $("div#shows");
 
-        var maxTracks = 3;
+        var maxTracks = 2;
 
         for (var i = 0; i < data.length; i++) {
             // Create a row for this show
@@ -30,8 +30,9 @@ $(document).ready(function() {
                     // If band has tracks, then make a link
                     // Create an anchor tag for this band 
                     var bandAnchor = $("<a>", {
+                        "href":           "#",
                         "data-toggle":    "popover", 
-                        "data-placement": "bottom",
+                        "data-placement": "left",
                     });
                     $(bandAnchor).text(band.name);
 
@@ -60,7 +61,6 @@ $(document).ready(function() {
                 if (j+1 < data[i].bands.length) {
                     $(colBand).append(", ");
                 }
-  
             }
 
             // Append the band column to our row
