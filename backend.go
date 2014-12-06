@@ -39,13 +39,8 @@ func main() {
 	// By default look for a static asset
 	http.Handle("/", http.FileServer(http.Dir(os.Getenv("LISTEN_STATIC_DIR"))))
 
-	err := http.ListenAndServe(":8003", nil)
+	err := http.ListenAndServe(":8084", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	/*
-		forever := make(chan bool)
-		<-forever
-	*/
 }
