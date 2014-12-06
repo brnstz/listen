@@ -47,7 +47,8 @@ $(document).ready(function() {
                     $(bandAnchor).popover({
                         "html":     true, 
                         "content":  trackPop,
-                        "trigger":  "manual",
+                        "trigger":  "hover",
+                        "container": bandAnchor
                     });
            
                 } else {
