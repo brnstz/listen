@@ -13,6 +13,8 @@ import (
 // How many days to look for shows
 const maxListingDays = 14
 
+const listingDateFormat = "Mon Jan 02 2006 03PM"
+
 // Saved listings in memory
 var cachedListings []byte
 
@@ -41,6 +43,7 @@ func showToListing(s show, bucket *s3.Bucket) (l listing, err error) {
 
 	// Copy over the starting time
 	l.Starts = s.Starts
+	l.StartsFormatted = s.Starts.Format(listingDateFormat)
 
 	// Get the venue object via slug
 	var v venue

@@ -33,9 +33,10 @@ const (
 
 // A listing is aggregated data of a show with all details
 type listing struct {
-	Starts *time.Time `json:"starts"`
-	Venue  venue      `json:"venue"`
-	Bands  []band     `json:"bands"`
+	Starts          *time.Time `json:"starts"`
+	StartsFormatted string     `json:"starts_formatted"`
+	Venue           venue      `json:"venue"`
+	Bands           []band     `json:"bands"`
 }
 
 // A show with only references to venues/bands, not full details
