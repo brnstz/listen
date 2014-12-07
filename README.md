@@ -1,7 +1,7 @@
 listen
 ======
 
-Data NYC concert listings with sample audio. 
+NYC concert listings with sample audio
 
 Hosted at: http://listen.brnstz.com/
 
