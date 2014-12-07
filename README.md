@@ -1,7 +1,13 @@
 listen
 ======
 
-NYC concert listings with sample audio: http://listen.brnstz.com/
+Data NYC concert listings with sample audio. 
+
+Hosted at: http://listen.brnstz.com/
+
+## Related code
+
+Go API client for ohmyrockness.com: https://github.com/brnstz/ohmy
 
 ## Quickstart
 ```bash
