@@ -4,8 +4,7 @@ listen
 NYC concert listings with sample audio: http://listen.brnstz.com/
 
 ## Quickstart
-```
-bash
+```bash
 
 # Clone, get dependencies and build the binary
 git clone git@github.com:brnstz/listen.git
